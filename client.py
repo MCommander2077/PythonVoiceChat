@@ -31,7 +31,7 @@ class Window():
         global app_ip, app_port
         if self.ip_Port.get() == '':
             app_ip = official_server_ip
-            app_port = 9808
+            app_port = 9809
         else:
             ip_port = self.ip_Port.get()
             app_ip, app_port = ip_port.split(':')
