@@ -4,7 +4,7 @@
 # file    : client.py
 # modify time: -
 
-#GUI
+# GUI
 import tkinter as tk
 import customtkinter as ctk
 import tkinter.messagebox as tkm
@@ -13,15 +13,18 @@ import socket
 import threading
 import sys
 import pyaudio
-import requests
+# import requests
 
-official_server = requests.get('http://ds.yetixcn.com:5000/getserverip')
-official_server_ip = official_server.text
+# official_server = requests.get('http://ds.yetixcn.com:5000/getserverip')
+# official_server_ip = official_server.text
 
 app_ip = ''
 app_port = ''
 
 app_status_str = ''
+
+close_mk = True
+
 
 class Window():
     def __init__(self):
@@ -30,11 +33,17 @@ class Window():
     def button_login(self, *args):
         global app_ip, app_port
         if self.ip_Port.get() == '':
-            app_ip = official_server_ip
+            app_ip = str(socket.gethostbyname("ds.yetixcn.com"))
             app_port = 9809
         else:
             ip_port = self.ip_Port.get()
-            app_ip, app_port = ip_port.split(':')
+            try:
+                app_ip, app_port = ip_port.split(':')
+            except:
+                try:
+                    app_ip, app_port = ip_port.split('：')
+                except BaseException as error:
+                    tkm.showerror("参数传递错误！",message=f"错误码：\n{error}")
         app_port = int(app_port)
         Client().connect_server()
         self.app_login.destroy()
@@ -43,11 +52,11 @@ class Window():
     def window_login(self):
         self.app_login = ctk.CTk()
         self.app_login.title('语音聊天')
-        self.app_login.geometry('400x400')
+        self.app_login.geometry('400x200')
         # 按钮
         btn_frame = ctk.CTkFrame(self.app_login, width=480, height=20)
         btn_frame.grid(row=2, column=0, sticky='E')
-        #self.app_login.bind('<\>', self.MikeChange)
+        # self.app_login.bind('<\>', self.MikeChange)
         self.ip_Port = tk.StringVar()
         self.ip_Port.set('')  # f'{official_server_ip}:9808'
 
@@ -75,19 +84,37 @@ class Window():
         self.app_main = ctk.CTk()
         self.app_main.title('语音聊天')
         self.app_main.geometry('400x400')
-        # 按钮
-        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=20)
-        btn_frame.grid(row=2, column=0, sticky='E')
-        buttom = ctk.CTkButton(
-            btn_frame, text='断开链接', command=self.Disconnect)
-        buttom.place()
-        buttom.grid()
-        #self.app_main.bind('<\>', self.Disconnect)
 
-        '''self.app_status = tk.StringVar()
-        self.app_status.set(f'')
-        labelStatus = ctk.CTkLabel(self.app_main, textvariable = app_status)
-        labelStatus.place(x=0, y=70, width=120, height=40)'''
+        # 创建Frame以供Button1
+        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
+        btn_frame.grid(row=2, column=0, sticky='E')
+        # 按钮
+        button_disconnect = ctk.CTkButton(
+            btn_frame, text='断开链接', command=self.Disconnect)
+        button_disconnect.place(x=100, y=10, width=200, height=60)
+        # self.app_main.bind('<\>', self.Disconnect)
+
+        # 创建Frame以供Button2
+        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
+        btn_frame.grid(row=2, column=0, sticky='E')
+        # 按钮
+        button_disconnect = ctk.CTkButton(
+            btn_frame, text='按"\"键开关麦', command=self.Disconnect)
+        button_disconnect.place(x=100, y=10, width=200, height=60)
+
+        '''# 创建Frame以供Button3
+        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
+        btn_frame.grid(row=2, column=0, sticky='E')
+        # 按钮
+        button_disconnect = ctk.CTkButton(
+            btn_frame, text='断开链接', command=self.Disconnect)
+        button_disconnect.place(x=100, y=10, width=200, height=60)'''
+
+        labelStatus = ctk.CTkLabel(self.app_main, text='')
+        labelStatus.place(x=0, y=70, width=120, height=40)
+        self.app_status = (f'114514')
+        labelStatus.configure(text=self.app_status)
+
         # 创建多行文本框, 显示在线用户
         # listbox1 = tk.Listbox(self.app_login)
         # listbox1.place(x=0, y=0, width=130, height=320)
@@ -96,6 +123,9 @@ class Window():
     def Disconnect(self, *args):
         Client().disconnect()
         self.app_main.destroy()
+
+    def set_app_status(self, status):
+        exec(f"self.app_status = (f'{status}')")
 
 
 class Client:
@@ -128,13 +158,13 @@ class Client:
                                           frames_per_buffer=chunk_size)
         self.recording_stream = self.p.open(format=audio_format, channels=channels, rate=rate, input=True,
                                             frames_per_buffer=chunk_size)
-        
+
         # start threads
         self.receive_thread = threading.Thread(
             target=self.receive_server_data).start()
         self.send_thread = threading.Thread(
             target=self.send_data_to_server).start()
-        
+
         tkm.showinfo("提示", message=f"已连接到服务器")
 
     def disconnect(self):
@@ -147,18 +177,20 @@ class Client:
             if self.connect_close == True:
                 break
             try:
-                receive_data = self.s.recv(10240)
+                receive_data = self.s.recv(1024)
                 self.playing_stream.write(receive_data)
             except:
                 pass
 
     def send_data_to_server(self):
+        global close_mk
         while True:
             if self.connect_close == True:
                 break
             try:
-                send_data = self.recording_stream.read(1024)
-                self.s.sendall(send_data)
+                if close_mk == True:
+                    send_data = self.recording_stream.read(1024)
+                    self.s.sendall(send_data)
             except:
                 pass
 

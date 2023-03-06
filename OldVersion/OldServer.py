@@ -9,7 +9,7 @@ import threading
 
 class Server:
     def __init__(self):
-        self.ip = "0.0.0.0"#socket.gethostbyname(socket.gethostname())
+        self.ip = socket.gethostbyname(socket.gethostname())
         while True:
             try:
                 self.port = 9808
@@ -34,7 +34,7 @@ class Server:
             self.connections.append(c)
 
             threading.Thread(target=self.handle_client,
-                            args=(c, addr,)).start()
+                             args=(c, addr,)).start()
 
     def broadcast(self, sock, data):
         for client in self.connections:
@@ -48,10 +48,10 @@ class Server:
         while 1:
             try:
                 data = c.recv(1024)
-                print(f"[info]data from client:{addr},got it!")
+                print(data)
                 self.broadcast(c, data)
 
-            except BaseException as error:
+            except socket.error:
                 c.close()
 
 
