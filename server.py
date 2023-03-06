@@ -9,7 +9,7 @@ import threading
 
 class Server:
     def __init__(self):
-        self.ip = "0.0.0.0"#socket.gethostbyname(socket.gethostname())
+        self.ip = '0.0.0.0'#socket.gethostbyname(socket.gethostname())
         while True:
             try:
                 self.port = 9808
@@ -45,14 +45,17 @@ class Server:
                     pass
 
     def handle_client(self, c, addr):
+        print(f"[info]handle client '{addr}'")
         while 1:
             try:
                 data = c.recv(1024)
-                print(f"[info]data from client:{addr},got it!")
                 self.broadcast(c, data)
 
-            except BaseException as error:
+            except socket.error as error:
                 c.close()
+                print(f"[error]we got an error at client {addr},error code:\n   '{error}'.\n    connection closed.")
+                break
+        print(f"[info]client {addr} connection closed.")
 
 
 server = Server()

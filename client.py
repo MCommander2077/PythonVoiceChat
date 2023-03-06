@@ -4,15 +4,16 @@
 # file    : client.py
 # modify time: -
 
+import socket
+import sys
+import threading
 # GUI
 import tkinter as tk
-import customtkinter as ctk
 import tkinter.messagebox as tkm
 
-import socket
-import threading
-import sys
+import customtkinter as ctk
 import pyaudio
+
 # import requests
 
 # official_server = requests.get('http://ds.yetixcn.com:5000/getserverip')
@@ -23,7 +24,7 @@ app_port = ''
 
 app_status_str = ''
 
-close_mk = True
+mk_status = True
 
 
 class Window():
@@ -58,7 +59,7 @@ class Window():
         btn_frame.grid(row=2, column=0, sticky='E')
         # self.app_login.bind('<\>', self.MikeChange)
         self.ip_Port = tk.StringVar()
-        self.ip_Port.set('')  # f'{official_server_ip}:9808'
+        self.ip_Port.set('127.0.0.1:9808')  # f'{official_server_ip}:9808'
 
         label1 = ctk.CTkLabel(self.app_login, text='不填写默认链接官方服务器')
         label1.place(x=0, y=0, width=400, height=40)
@@ -100,7 +101,7 @@ class Window():
         # 按钮
         button_disconnect = ctk.CTkButton(
             btn_frame, text='按"\"键开关麦', command=self.Disconnect)
-        button_disconnect.place(x=100, y=10, width=200, height=60)
+        button_disconnect.place(x=100, y=70, width=200, height=60)
 
         '''# 创建Frame以供Button3
         btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
@@ -111,7 +112,7 @@ class Window():
         button_disconnect.place(x=100, y=10, width=200, height=60)'''
 
         labelStatus = ctk.CTkLabel(self.app_main, text='')
-        labelStatus.place(x=0, y=70, width=120, height=40)
+        labelStatus.place(x=0, y=110, width=120, height=40)
         self.app_status = (f'114514')
         labelStatus.configure(text=self.app_status)
 
@@ -119,6 +120,7 @@ class Window():
         # listbox1 = tk.Listbox(self.app_login)
         # listbox1.place(x=0, y=0, width=130, height=320)
         self.app_main.mainloop()
+        self.Disconnect()
 
     def Disconnect(self, *args):
         Client().disconnect()
@@ -131,7 +133,7 @@ class Window():
 class Client:
     def __init__(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect_close = True
+        self.connect_close = False
 
     def connect_server(self):
         global app_ip, app_port
@@ -155,7 +157,7 @@ class Client:
 
         self.p = pyaudio.PyAudio()
         self.playing_stream = self.p.open(format=audio_format, channels=channels, rate=rate, output=True,
-                                          frames_per_buffer=chunk_size)
+                                            frames_per_buffer=chunk_size)
         self.recording_stream = self.p.open(format=audio_format, channels=channels, rate=rate, input=True,
                                             frames_per_buffer=chunk_size)
 
@@ -168,9 +170,15 @@ class Client:
         tkm.showinfo("提示", message=f"已连接到服务器")
 
     def disconnect(self):
-        self.s.close()
         self.connect_close = True
+        self.s.close()
         sys.exit(0)
+
+    def change_mk_status(self):
+        if mk_status == True:
+            mk_status = False
+        else:
+            mk_status = True
 
     def receive_server_data(self):
         while True:
@@ -183,14 +191,15 @@ class Client:
                 pass
 
     def send_data_to_server(self):
-        global close_mk
         while True:
             if self.connect_close == True:
                 break
             try:
-                if close_mk == True:
-                    send_data = self.recording_stream.read(1024)
-                    self.s.sendall(send_data)
+                if mk_status == True:
+                    data = self.recording_stream.read(1024)
+                    self.s.sendall(data)
+                else:
+                    pass
             except:
                 pass
 
