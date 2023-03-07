@@ -28,7 +28,7 @@ mk_status = True
 
 
 class Window():
-    def __init__(self):
+    def main(self):
         self.window_login()
 
     def button_login(self, *args):
@@ -44,11 +44,14 @@ class Window():
                 try:
                     app_ip, app_port = ip_port.split('：')
                 except BaseException as error:
-                    tkm.showerror("参数传递错误！",message=f"错误码：\n{error}")
+                    tkm.showerror("参数传递错误！", message=f"错误码：\n{error}")
         app_port = int(app_port)
         Client().connect_server()
         self.app_login.destroy()
         self.window_mainapp()
+    
+    def button_mk_change(self,*args):
+        Client().change_mk_status()
 
     def window_login(self):
         self.app_login = ctk.CTk()
@@ -87,21 +90,21 @@ class Window():
         self.app_main.geometry('400x400')
 
         # 创建Frame以供Button1
-        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
-        btn_frame.grid(row=2, column=0, sticky='E')
+        btn_frame = ctk.CTkFrame(self.app_main, width=400, height=80)
+        btn_frame.place(x=0, y=10)
         # 按钮
         button_disconnect = ctk.CTkButton(
-            btn_frame, text='断开链接', command=self.Disconnect)
+            btn_frame, text='断开链接', command=self.disconnect)
         button_disconnect.place(x=100, y=10, width=200, height=60)
-        # self.app_main.bind('<\>', self.Disconnect)
 
-        # 创建Frame以供Button2
-        btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
-        btn_frame.grid(row=2, column=0, sticky='E')
+        '''# 创建Frame以供Button2
+        btn_frame = ctk.CTkFrame(self.app_main, width=400, height=80)
+        btn_frame.place(x=0, y=100)
         # 按钮
         button_disconnect = ctk.CTkButton(
-            btn_frame, text='按"\"键开关麦', command=self.Disconnect)
-        button_disconnect.place(x=100, y=70, width=200, height=60)
+            btn_frame, text='开关麦', command=self.button_mk_change)
+        button_disconnect.place(x=100, y=10, width=200, height=60)
+        # self.app_main.bind('<\>', Client().change_mk_status)'''
 
         '''# 创建Frame以供Button3
         btn_frame = ctk.CTkFrame(self.app_main, width=480, height=80)
@@ -111,20 +114,21 @@ class Window():
             btn_frame, text='断开链接', command=self.Disconnect)
         button_disconnect.place(x=100, y=10, width=200, height=60)'''
 
+        '''# 连接状态文本
         labelStatus = ctk.CTkLabel(self.app_main, text='')
-        labelStatus.place(x=0, y=110, width=120, height=40)
-        self.app_status = (f'114514')
-        labelStatus.configure(text=self.app_status)
+        labelStatus.place(x=0, y=180, width=400, height=40)
+        self.app_status = (f'状态：已开麦')
+        labelStatus.configure(text=self.app_status)'''
 
         # 创建多行文本框, 显示在线用户
         # listbox1 = tk.Listbox(self.app_login)
         # listbox1.place(x=0, y=0, width=130, height=320)
         self.app_main.mainloop()
-        self.Disconnect()
+        self.disconnect()
 
-    def Disconnect(self, *args):
-        Client().disconnect()
+    def disconnect(self, *args):
         self.app_main.destroy()
+        Client().disconnect()
 
     def set_app_status(self, status):
         exec(f"self.app_status = (f'{status}')")
@@ -133,7 +137,11 @@ class Window():
 class Client:
     def __init__(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect_close = False
+
+    def setup(self):
+        global connect_close,mk_status
+        mk_status = True
+        connect_close = False
 
     def connect_server(self):
         global app_ip, app_port
@@ -163,27 +171,34 @@ class Client:
 
         # start threads
         self.receive_thread = threading.Thread(
-            target=self.receive_server_data).start()
+            target=self.receive_server_data)
+        self.receive_thread.daemon = True
+        self.receive_thread.start()
+
         self.send_thread = threading.Thread(
-            target=self.send_data_to_server).start()
+            target=self.send_data_to_server)
+        self.send_thread.daemon = True
+        self.send_thread.start()
 
         tkm.showinfo("提示", message=f"已连接到服务器")
 
     def disconnect(self):
-        self.connect_close = True
-        self.s.close()
         sys.exit(0)
 
     def change_mk_status(self):
+        global mk_status
         if mk_status == True:
             mk_status = False
+            Window().set_app_status(f'状态：已关麦')
         else:
             mk_status = True
+            Window().set_app_status(f'状态：已开麦')
 
     def receive_server_data(self):
+        global connect_close
         while True:
-            if self.connect_close == True:
-                break
+            if connect_close == True:
+                sys.exit(0)
             try:
                 receive_data = self.s.recv(1024)
                 self.playing_stream.write(receive_data)
@@ -191,19 +206,22 @@ class Client:
                 pass
 
     def send_data_to_server(self):
+        global mk_status, connect_close
         while True:
-            if self.connect_close == True:
-                break
+            if connect_close == True:
+                sys.exit(0)
             try:
                 if mk_status == True:
                     data = self.recording_stream.read(1024)
                     self.s.sendall(data)
-                else:
-                    pass
             except:
                 pass
 
+def main():
+    client = Client()
+    client.setup()
+    window = Window()
+    window.main()
 
 if __name__ == '__main__':
-    client = Client()
-    window = Window()
+    main()

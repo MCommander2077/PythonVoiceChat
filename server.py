@@ -9,7 +9,7 @@ import threading
 
 class Server:
     def __init__(self):
-        self.ip = '0.0.0.0'#socket.gethostbyname(socket.gethostname())
+        self.ip = ''#socket.gethostbyname(socket.gethostname())
         while True:
             try:
                 self.port = 9808
@@ -23,7 +23,7 @@ class Server:
         self.accept_connections()
 
     def accept_connections(self):
-        self.s.listen(100)
+        self.s.listen(5)
 
         print('Running on IP: ' + self.ip)
         print('Running on port: ' + str(self.port))
@@ -33,8 +33,8 @@ class Server:
 
             self.connections.append(c)
 
-            threading.Thread(target=self.handle_client,
-                            args=(c, addr,)).start()
+            threading.Thread(target=self.handle_client,args=(c, addr,)).start()
+
 
     def broadcast(self, sock, data):
         for client in self.connections:
@@ -49,8 +49,11 @@ class Server:
         while 1:
             try:
                 data = c.recv(1024)
+                if data == '':
+                    c.close()
+                    print(f"[error]we got an error at client {addr},error code:\n      'empty chart'.\n       connection closed.")
+                    break
                 self.broadcast(c, data)
-
             except socket.error as error:
                 c.close()
                 print(f"[error]we got an error at client {addr},error code:\n   '{error}'.\n    connection closed.")
